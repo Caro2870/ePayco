@@ -205,6 +205,9 @@ export class WalletService {
         .sort({ createdAt: -1 })
         .limit(5) as ITransaction[];
 
+      // Verificar y depurar datos de transacciones
+      console.log('Transacciones encontradas:', JSON.stringify(transactions, null, 2));
+
       return createSuccessResponse({
         balance: client.balance,
         client: {
@@ -219,7 +222,7 @@ export class WalletService {
           type: t.type,
           amount: t.amount,
           reference: t.reference,
-          date: t.createdAt
+          date: t.createdAt instanceof Date ? t.createdAt.toISOString() : t.createdAt
         }))
       });
     } catch (error) {
