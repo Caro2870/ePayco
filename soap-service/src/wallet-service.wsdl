@@ -188,9 +188,9 @@
       <input>
         <soap:body use="literal"/>
       </input>
-      <o>
+      <output>
         <soap:body use="literal"/>
-      </o>
+      </output>
     </operation>
     
     <operation name="RechargeWallet">
@@ -198,9 +198,9 @@
       <input>
         <soap:body use="literal"/>
       </input>
-      <o>
+      <output>
         <soap:body use="literal"/>
-      </o>
+      </output>
     </operation>
     
     <operation name="InitiatePayment">
@@ -208,9 +208,9 @@
       <input>
         <soap:body use="literal"/>
       </input>
-      <o>
+      <output>
         <soap:body use="literal"/>
-      </o>
+      </output>
     </operation>
     
     <operation name="ConfirmPayment">
@@ -218,9 +218,9 @@
       <input>
         <soap:body use="literal"/>
       </input>
-      <o>
+      <output>
         <soap:body use="literal"/>
-      </o>
+      </output>
     </operation>
     
     <operation name="CheckBalance">
@@ -228,9 +228,9 @@
       <input>
         <soap:body use="literal"/>
       </input>
-      <o>
+      <output>
         <soap:body use="literal"/>
-      </o>
+      </output>
     </operation>
   </binding>
   

@@ -4,12 +4,19 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Get email configuration from environment variables
+// En Railway, añade estas variables de entorno
 const EMAIL_USER = process.env.EMAIL_USER || '';
 const EMAIL_PASS = process.env.EMAIL_PASS || '';
+const EMAIL_SERVICE = process.env.EMAIL_SERVICE || 'gmail';
+
+// Mensaje si las credenciales no están configuradas
+if (!EMAIL_USER || !EMAIL_PASS) {
+  console.warn('Email credentials not configured. Email notifications will not be sent.');
+}
 
 // Create transporter object using SMTP transport
 const transporter = nodemailer.createTransport({
-  service: 'gmail', // Change as needed
+  service: EMAIL_SERVICE,
   auth: {
     user: EMAIL_USER,
     pass: EMAIL_PASS,
