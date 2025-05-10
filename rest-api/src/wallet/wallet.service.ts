@@ -8,8 +8,26 @@ export class WalletService {
   private soapUrl: string;
 
   constructor(private configService: ConfigService) {
-    // Get the SOAP service URL from config
-    this.soapUrl = this.configService.get<string>('SOAP_SERVICE_URL', 'http://localhost:8000/wallet-service?wsdl');
+    // Depurar la carga de configuración
+    const config = this.configService.get('soapService');
+    console.log('Config loaded:', config);
+    
+    // Intentar todas las formas posibles de obtener la URL
+    let soapUrl = process.env.SOAP_SERVICE_URL;
+    console.log('Direct from env:', soapUrl);
+    
+    if (!soapUrl) {
+      soapUrl = this.configService.get<string>('soapService.url');
+      console.log('From config nested:', soapUrl);
+    }
+    
+    // Asegurar que la URL termine con ?wsdl para el cliente SOAP
+    this.soapUrl = soapUrl || 'http://localhost:8000/wallet-service?wsdl';
+    if (!this.soapUrl.includes('?wsdl')) {
+      this.soapUrl += '?wsdl';
+    }
+    
+    console.log('Final SOAP URL:', this.soapUrl);
   }
 
   /**
@@ -17,6 +35,7 @@ export class WalletService {
    */
   private async getSoapClient() {
     try {
+      console.log('Creating SOAP client with URL:', this.soapUrl);
       return await createClientAsync(this.soapUrl);
     } catch (error) {
       console.error('Error creating SOAP client:', error);
