@@ -22,13 +22,9 @@ const generateDynamicWsdl = () => {
   const serviceUrl = process.env.SERVICE_URL || `http://${HOST}:${PORT}/wallet-service`;
   console.log(`Setting SOAP service URL to: ${serviceUrl}`);
   
-  // Corregir las etiquetas <o> a <output>
-  const fixedWsdl = walletServiceWsdl
-    .split('<output>').join('<output>')
-    .split('</output>').join('</output>');
-  
+
   // Actualizar la dirección del servicio
-  const updatedWsdl = fixedWsdl.replace(
+  const updatedWsdl = walletServiceWsdl.replace(
     /<soap:address location="http:\/\/localhost:8000\/wallet-service"\/>/,
     `<soap:address location="${serviceUrl}"/>`
   );
@@ -42,7 +38,7 @@ const walletService = new WalletService();
 // Service implementation
 const serviceObject = {
   WalletService: {
-    WalletServiceSoap: {
+    WalletServicePort: {
       RegisterClient: async (args: { document: string; names: string; email: string; phone: string }) => {
         console.log('SOAP RegisterClient called with:', args);
         return await walletService.registerClient(args);
