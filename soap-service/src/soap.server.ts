@@ -11,9 +11,30 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 8000;
+const HOST = process.env.HOST || 'localhost';
 
 // WSDL definition for the SOAP service
-const walletServiceWsdl = fs.readFileSync('src/wallet-service.wsdl', 'utf8');
+let walletServiceWsdl = fs.readFileSync('src/wallet-service.wsdl', 'utf8');
+
+// Función para generar WSDL dinámicamente
+const generateDynamicWsdl = () => {
+  // Determinar la URL del servicio SOAP
+  const serviceUrl = process.env.SERVICE_URL || `http://${HOST}:${PORT}/wallet-service`;
+  console.log(`Setting SOAP service URL to: ${serviceUrl}`);
+  
+  // Corregir las etiquetas <o> a <output>
+  const fixedWsdl = walletServiceWsdl
+    .split('<output>').join('<output>')
+    .split('</output>').join('</output>');
+  
+  // Actualizar la dirección del servicio
+  const updatedWsdl = fixedWsdl.replace(
+    /<soap:address location="http:\/\/localhost:8000\/wallet-service"\/>/,
+    `<soap:address location="${serviceUrl}"/>`
+  );
+  
+  return updatedWsdl;
+};
 
 // Initialize service
 const walletService = new WalletService();
@@ -60,15 +81,19 @@ const startServer = async () => {
     // Connect to MongoDB
     await connectToDatabase();
     
+    // Generate dynamic WSDL
+    const dynamicWsdl = generateDynamicWsdl();
+    
     // Create HTTP server
     const server = http.createServer(app);
     
     // Create and listen for SOAP requests
-    soap.listen(server, '/wallet-service', serviceObject, walletServiceWsdl);
+    soap.listen(server, '/wallet-service', serviceObject, dynamicWsdl);
     
     // Start server
     server.listen(PORT, () => {
-      console.log(`SOAP Server running at http://localhost:${PORT}/wallet-service?wsdl`);
+      const serviceUrl = process.env.SERVICE_URL || `http://${HOST}:${PORT}/wallet-service`;
+      console.log(`SOAP Server running at ${serviceUrl}?wsdl`);
     });
   } catch (error) {
     console.error('Failed to start the server:', error);
