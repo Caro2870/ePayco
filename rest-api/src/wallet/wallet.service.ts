@@ -1,6 +1,6 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ClientCredentialsDto, RegisterClientDto, RechargeWalletDto, InitiatePaymentDto, ConfirmPaymentDto } from './dto/client.dto';
+import { ClientCredentialsDto, RegisterClientDto, RechargeWalletDto, InitiatePaymentDto, PaymentSessionDto } from './dto/client.dto';
 import { createClientAsync } from 'soap';
 
 @Injectable()
@@ -47,51 +47,63 @@ export class WalletService {
   }
 
   /**
+   * Procesa la respuesta SOAP y maneja errores de forma consistente
+   */
+  private processSoapResponse(result) {
+    // La respuesta SOAP normalmente está en el primer elemento del array
+    const response = result[0];
+    
+    if (!response.success) {
+      throw new HttpException(
+        {
+          success: false,
+          cod_error: response.cod_error || '99',
+          message_error: response.message_error || 'Operation failed',
+          data: {},
+        },
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
+    return {
+      success: true,
+      cod_error: response.cod_error || '00',
+      message_error: response.message_error || '',
+      data: response.data || {},
+    };
+  }
+
+  /**
+   * Manejador de errores SOAP común
+   */
+  private handleSoapError(error, operationName): never {
+    console.error(`Error in ${operationName}:`, error);
+    
+    if (error instanceof HttpException) {
+      throw error;
+    }
+
+    throw new HttpException(
+      {
+        success: false,
+        cod_error: '99',
+        message_error: `Error processing ${operationName}`,
+        data: {},
+      },
+      HttpStatus.INTERNAL_SERVER_ERROR
+    );
+  }
+
+  /**
    * Register a new client
    */
   async registerClient(registerClientDto: RegisterClientDto) {
     try {
       const client = await this.getSoapClient();
-      
-      // Call the SOAP service using promisify to handle the callback
       const result = await client.RegisterClientAsync(registerClientDto);
-      
-      // The SOAP response is typically nested in the first element of the array
-      const response = result[0];
-
-      if (!response.success) {
-        throw new HttpException(
-          {
-            success: false,
-            cod_error: response.cod_error,
-            message_error: response.message_error,
-            data: {},
-          },
-          HttpStatus.BAD_REQUEST
-        );
-      }
-
-      return {
-        success: true,
-        cod_error: response.cod_error,
-        message_error: response.message_error,
-        data: response.data,
-      };
+      return this.processSoapResponse(result);
     } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-
-      console.error('Error registering client:', error);
-      throw new HttpException(
-        {
-          success: false,
-          cod_error: '99',
-          message_error: 'Internal server error',
-          data: {},
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR
-      );
+      this.handleSoapError(error, 'registerClient');
     }
   }
 
@@ -102,42 +114,15 @@ export class WalletService {
     try {
       const client = await this.getSoapClient();
       
+      // Asegurar que amount sea un número
+      if (typeof rechargeWalletDto.amount === 'string') {
+        rechargeWalletDto.amount = Number(rechargeWalletDto.amount);
+      }
+      
       const result = await client.RechargeWalletAsync(rechargeWalletDto);
-      const response = result[0];
-
-      if (!response.success) {
-        throw new HttpException(
-          {
-            success: false,
-            cod_error: response.cod_error,
-            message_error: response.message_error,
-            data: {},
-          },
-          HttpStatus.BAD_REQUEST
-        );
-      }
-
-      return {
-        success: true,
-        cod_error: response.cod_error,
-        message_error: response.message_error,
-        data: response.data,
-      };
+      return this.processSoapResponse(result);
     } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-
-      console.error('Error recharging wallet:', error);
-      throw new HttpException(
-        {
-          success: false,
-          cod_error: '99',
-          message_error: 'Internal server error',
-          data: {},
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR
-      );
+      this.handleSoapError(error, 'rechargeWallet');
     }
   }
 
@@ -148,88 +133,28 @@ export class WalletService {
     try {
       const client = await this.getSoapClient();
       
+      // Asegurar que amount sea un número
+      if (typeof initiatePaymentDto.amount === 'string') {
+        initiatePaymentDto.amount = Number(initiatePaymentDto.amount);
+      }
+      
       const result = await client.InitiatePaymentAsync(initiatePaymentDto);
-      const response = result[0];
-
-      if (!response.success) {
-        throw new HttpException(
-          {
-            success: false,
-            cod_error: response.cod_error,
-            message_error: response.message_error,
-            data: {},
-          },
-          HttpStatus.BAD_REQUEST
-        );
-      }
-
-      return {
-        success: true,
-        cod_error: response.cod_error,
-        message_error: response.message_error,
-        data: response.data,
-      };
+      return this.processSoapResponse(result);
     } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-
-      console.error('Error initiating payment:', error);
-      throw new HttpException(
-        {
-          success: false,
-          cod_error: '99',
-          message_error: 'Internal server error',
-          data: {},
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR
-      );
+      this.handleSoapError(error, 'initiatePayment');
     }
   }
 
   /**
    * Confirm payment
    */
-  async confirmPayment(confirmPaymentDto: ConfirmPaymentDto) {
+  async confirmPayment(confirmPaymentDto: PaymentSessionDto) {
     try {
       const client = await this.getSoapClient();
-      
       const result = await client.ConfirmPaymentAsync(confirmPaymentDto);
-      const response = result[0];
-
-      if (!response.success) {
-        throw new HttpException(
-          {
-            success: false,
-            cod_error: response.cod_error,
-            message_error: response.message_error,
-            data: {},
-          },
-          HttpStatus.BAD_REQUEST
-        );
-      }
-
-      return {
-        success: true,
-        cod_error: response.cod_error,
-        message_error: response.message_error,
-        data: response.data,
-      };
+      return this.processSoapResponse(result);
     } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-
-      console.error('Error confirming payment:', error);
-      throw new HttpException(
-        {
-          success: false,
-          cod_error: '99',
-          message_error: 'Internal server error',
-          data: {},
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR
-      );
+      this.handleSoapError(error, 'confirmPayment');
     }
   }
 
@@ -239,43 +164,10 @@ export class WalletService {
   async checkBalance(clientCredentialsDto: ClientCredentialsDto) {
     try {
       const client = await this.getSoapClient();
-      
       const result = await client.CheckBalanceAsync(clientCredentialsDto);
-      const response = result[0];
-
-      if (!response.success) {
-        throw new HttpException(
-          {
-            success: false,
-            cod_error: response.cod_error,
-            message_error: response.message_error,
-            data: {},
-          },
-          HttpStatus.BAD_REQUEST
-        );
-      }
-
-      return {
-        success: true,
-        cod_error: response.cod_error,
-        message_error: response.message_error,
-        data: response.data,
-      };
+      return this.processSoapResponse(result);
     } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-
-      console.error('Error checking balance:', error);
-      throw new HttpException(
-        {
-          success: false,
-          cod_error: '99',
-          message_error: 'Internal server error',
-          data: {},
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR
-      );
+      this.handleSoapError(error, 'checkBalance');
     }
   }
 }

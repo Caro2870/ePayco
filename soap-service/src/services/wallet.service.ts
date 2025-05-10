@@ -1,9 +1,10 @@
 import { connectToDatabase } from '../config/db.config';
-import Client from '../models/client.model';
-import Transaction from '../models/transaction.model';
+import Client, { IClient } from '../models/client.model';
+import Transaction, { ITransaction } from '../models/transaction.model';
 import { PaymentSession, paymentSessions } from '../models/payment-session.model';
 import { sendTokenEmail } from '../utils/email.util';
 import { createSuccessResponse, createErrorResponse } from '../utils/response.util';
+import { toObjectIdString } from '../utils/mongoose.util';
 
 // Connect to database
 connectToDatabase();
@@ -29,11 +30,12 @@ export class WalletService {
         email,
         phone,
         balance: 0
-      });
+      }) as IClient;
 
       await client.save();
       
-      return createSuccessResponse({ clientId: client._id });
+      // Convertir el ObjectId a string para evitar problemas de serialización XML
+      return createSuccessResponse({ clientId: toObjectIdString(client._id) });
     } catch (error) {
       console.error('Error in registerClient:', error);
       return createErrorResponse('500', 'Error registering client');
@@ -52,7 +54,7 @@ export class WalletService {
       }
 
       // Find client
-      const client = await Client.findOne({ document, phone });
+      const client = await Client.findOne({ document, phone }) as IClient;
       if (!client) {
         return createErrorResponse('003', 'Client not found');
       }
@@ -68,12 +70,12 @@ export class WalletService {
         amount,
         reference: `Wallet recharge for ${amount}`,
         status: 'COMPLETED'
-      });
+      }) as ITransaction;
       await transaction.save();
 
       return createSuccessResponse({ 
         newBalance: client.balance,
-        transactionId: transaction._id
+        transactionId: toObjectIdString(transaction._id)
       });
     } catch (error) {
       console.error('Error in rechargeWallet:', error);
@@ -93,7 +95,7 @@ export class WalletService {
       }
 
       // Find client
-      const client = await Client.findOne({ document, phone });
+      const client = await Client.findOne({ document, phone }) as IClient;
       if (!client) {
         return createErrorResponse('003', 'Client not found');
       }
@@ -145,7 +147,7 @@ export class WalletService {
       }
 
       // Find client
-      const client = await Client.findOne({ document: session.document, phone: session.phone });
+      const client = await Client.findOne({ document: session.document, phone: session.phone }) as IClient;
       if (!client) {
         paymentSessions.delete(sessionId);
         return createErrorResponse('003', 'Client not found');
@@ -168,7 +170,7 @@ export class WalletService {
         amount: session.amount,
         reference: `Payment of ${session.amount}`,
         status: 'COMPLETED'
-      });
+      }) as ITransaction;
       await transaction.save();
 
       // Update session status and clean up
@@ -176,7 +178,7 @@ export class WalletService {
       paymentSessions.delete(sessionId);
 
       return createSuccessResponse({
-        transactionId: transaction._id,
+        transactionId: toObjectIdString(transaction._id),
         newBalance: client.balance
       });
     } catch (error) {
@@ -193,7 +195,7 @@ export class WalletService {
       const { document, phone } = args;
 
       // Find client
-      const client = await Client.findOne({ document, phone });
+      const client = await Client.findOne({ document, phone }) as IClient;
       if (!client) {
         return createErrorResponse('003', 'Client not found');
       }
@@ -201,17 +203,19 @@ export class WalletService {
       // Get recent transactions
       const transactions = await Transaction.find({ clientId: client._id })
         .sort({ createdAt: -1 })
-        .limit(5);
+        .limit(5) as ITransaction[];
 
       return createSuccessResponse({
         balance: client.balance,
         client: {
+          clientId: toObjectIdString(client._id),
           document: client.document,
           names: client.names,
           email: client.email,
           phone: client.phone
         },
         recentTransactions: transactions.map(t => ({
+          id: toObjectIdString(t._id),
           type: t.type,
           amount: t.amount,
           reference: t.reference,
